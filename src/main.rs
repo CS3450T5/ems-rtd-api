@@ -1,3 +1,4 @@
+use std::os::unix::process;
 use std::path::Path;
 use std::fs::File;
 use std::io::Write;
@@ -7,11 +8,11 @@ use xml::reader::{EventReader, XmlEvent};
 
 
 struct PriceEntry {
-    data_item: String,
+    //data_item: String,
     resource_name: String,
     interval_num: i32,
-    interval_start: String, // Change this later to be a timestamp
-    interval_end: String,   // Same here
+    //interval_start: String, // Change this later to be a timestamp
+    //interval_end: String,   // Same here
     price: f32,
 }
 
@@ -35,10 +36,33 @@ async fn main() {
     let xml_file = File::open(xml_path).unwrap();
     let xml_file = BufReader::new(xml_file);
 
-    let parser = EventReader::new(xml_file);
+    let mut parser = EventReader::new(xml_file);
 
     let mut depth = 0;
 
+    let mut processing = true;
+
+    while processing {
+        let element = parser.next();
+        match element {
+            Ok(XmlEvent::Characters(data)) => {
+                if data == "LMP_PRC" {
+                    println!("Hey look a thing");
+                    let name: String = parser.next().unwrap().try_into().expect("Oh god why");
+                    parser.next();
+                    parser.next();
+                    let intvl_num: i32 = parser.next();
+                    parser.next();
+                    parser.next();
+                    let price: f32 = parser.next();
+
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /*
     for i in parser {
         match i {
             Ok(XmlEvent::StartElement { name, ..}) => {
@@ -50,8 +74,8 @@ async fn main() {
                 println!("{:spaces$}-{n}", "", spaces = depth * 2, n = name.local_name);
             }
             Ok(XmlEvent::Characters(data)) => {
-                println!("Data: {}", data.escape_debug());
-                if data == "RTM" {
+                if data == "LMP_PRC" {
+                    println!("Hey look thingy aaaaaaaaaaaaa")
                 }
             }
             Err(i) => {
@@ -61,5 +85,6 @@ async fn main() {
             _ => {}
         }
     }
+    */
 
 }
