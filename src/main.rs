@@ -7,13 +7,14 @@ use std::io::BufReader;
 use xml::reader::{EventReader, XmlEvent};
 
 
+#[derive(Debug)]
 struct PriceEntry {
-    //data_item: String,
+    data_item: String,
     resource_name: String,
-    interval_num: i32,
+    //interval_num: i32,
     //interval_start: String, // Change this later to be a timestamp
     //interval_end: String,   // Same here
-    price: f32,
+    price: String //f32,
 }
 
 
@@ -38,24 +39,63 @@ async fn main() {
 
     let mut parser = EventReader::new(xml_file);
 
-    let mut depth = 0;
-
     let mut processing = true;
 
     while processing {
-        let element = parser.next();
+        let mut element = parser.next();
         match element {
             Ok(XmlEvent::Characters(data)) => {
                 if data == "LMP_PRC" {
-                    println!("Hey look a thing");
-                    let name: String = parser.next().unwrap().try_into().expect("Oh god why");
+                    let prc_item = data;
                     parser.next();
                     parser.next();
-                    let intvl_num: i32 = parser.next();
+                    parser.next();
+                    let mut r_name: String = "".to_string();
+                    match parser.next() {
+                        Ok(XmlEvent::Characters(next_data)) => {
+                            r_name = next_data;
+                        }
+                        _ => {}
+                    }
                     parser.next();
                     parser.next();
-                    let price: f32 = parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    let mut itvl_num = "".to_string();
+                    match parser.next() {
+                        Ok(XmlEvent::Characters(val)) => {
+                            itvl_num = val;
+                        }
+                        _ => {}
+                    }
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    parser.next();
+                    let mut value = "".to_string();
+                    match parser.next() {
+                        Ok(XmlEvent::Characters(val)) => {
+                            value = val;
+                        }
+                        _ => {}
+                    }
 
+                    let thingy = PriceEntry{
+                        data_item: prc_item,
+                        resource_name: r_name,
+                        price: value
+                    };
+                    println!("{:?}", thingy);
                 }
             }
             _ => {}
