@@ -12,8 +12,8 @@ struct PriceEntry {
     data_item: String,
     resource_name: String,
     interval_num: i32,
-    //interval_start: String, // Change this later to be a timestamp
-    //interval_end: String,   // Same here
+    interval_start: DateTime::<Local>,
+    interval_end: DateTime::<Local>,
     price: f32,
 }
 
@@ -22,7 +22,7 @@ struct PriceEntry {
 async fn main() {
     let curr: DateTime<Local> = Local::now();
 
-    let formatted = format!("{}", curr.format("http://oasis.caiso.com/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&startdatetime=%Y%m%dT00:00-0000&enddatetime=%Y%m%dT23:00-0000&version=3&market_run_id=RTM&node=LOGANCIT_LNODED1"));
+    let formatted = format!("{}", curr.format("http://oasis.caiso.com/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&startdatetime=%Y%m%dT00:00-0600&enddatetime=%Y%m%dT23:00-0600&version=3&market_run_id=RTM&node=LOGANCIT_LNODED1"));
     let resp = reqwest::get(formatted).await.unwrap();
 
     let path = Path::new("./data.zip");
@@ -53,6 +53,8 @@ async fn main() {
                     parser.next();
                     parser.next();
                     parser.next();
+
+                    // Resource name
                     let mut r_name: String = "".to_string();
                     match parser.next() {
                         Ok(XmlEvent::Characters(next_data)) => {
@@ -60,6 +62,7 @@ async fn main() {
                         }
                         _ => {}
                     }
+
                     parser.next();
                     parser.next();
                     parser.next();
@@ -77,14 +80,36 @@ async fn main() {
                     parser.next();
                     parser.next();
                     parser.next();
+
+                    // Start interval time
+                    let start_intvl: DateTime<Local>;
+                    match parser.next() {
+                        Ok(XmlEvent::Characters(val)) => {
+                            start_intvl = DateTime::parse_from_str(&val, "%Y-%m-%dT%T%:z").unwrap().to_utc().naive_local().and_local_timezone(Local).unwrap();
+                        }
+                        _ => {
+                            return;
+                        }
+                    }
                     parser.next();
                     parser.next();
                     parser.next();
+
+                    // End interval time
+                    let mut end_intvl: DateTime<Local>;
+                    match parser.next() {
+                        Ok(XmlEvent::Characters(val)) => {
+                            end_intvl = DateTime::parse_from_str(&val, "%Y-%m-%dT%T%:z").unwrap().to_utc().naive_local().and_local_timezone(Local).unwrap();
+                        }
+                        _ => {
+                            return;
+                        }
+                    }
+
                     parser.next();
                     parser.next();
                     parser.next();
-                    parser.next();
-                    parser.next();
+
                     let mut value = 0.0;
                     match parser.next() {
                         Ok(XmlEvent::Characters(val)) => {
@@ -97,15 +122,15 @@ async fn main() {
                         data_item: prc_item,
                         resource_name: r_name,
                         interval_num: itvl_num,
+                        interval_start: start_intvl,
+                        interval_end: end_intvl,
                         price: value
                     };
-                    println!("{:?}", thingy);
                 }
             }
             Ok(XmlEvent::EndDocument) => {
                 processing = false;
             }
-        
             _ => {}
         }
     }
