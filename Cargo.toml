@@ -10,3 +10,4 @@ tokio = { version = "1", features = ["full"] }
 xml = "0.8.16"
 dotenv = "0.15.0"
 chrono = "0.4.40"
+mysql = {version = "26.0.0", features = ["chrono"]}
