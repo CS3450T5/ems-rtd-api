@@ -8,7 +8,6 @@ use xml::reader::{EventReader, XmlEvent};
 use dotenv;
 use mysql::*;
 use mysql::prelude::*;
-use std::time;
 
 
 #[derive(Debug)]
@@ -33,7 +32,9 @@ async fn main() {
     let mut data_points: Vec<PriceEntry> = Vec::new();
 
     let formatted = format!("{}", curr.format("http://oasis.caiso.com/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&startdatetime=%Y%m%dT00:00-0600&enddatetime=%Y%m%dT23:00-0600&version=3&market_run_id=RTM&node=LOGANCIT_LNODED1"));
+    //let formatted = format!("http://oasis.caiso.com/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&startdatetime=20250124T00:00-0600&enddatetime=20250127T23:00-0600&version=3&market_run_id=RTM&node=LOGANCIT_LNODED1");
     let resp = reqwest::get(formatted).await.unwrap();
+    println!("Got zip file");
 
     let path = Path::new("./data.zip");
     let path1 = Path::new("./data/");
@@ -46,6 +47,7 @@ async fn main() {
     let filename: &str = zip.file_names().next().unwrap();
     let xml_path = Path::new("./data/").join(filename);
     zip.extract(path1).unwrap();
+    println!("Unzipped");
 
     let xml_file = File::open(xml_path).unwrap();
     let xml_file = BufReader::new(xml_file);
@@ -54,6 +56,7 @@ async fn main() {
 
     let mut processing = true;
 
+    println!("Starting parse");
     while processing {
         let element = parser.next();
         match element {
@@ -145,6 +148,7 @@ async fn main() {
             _ => {}
         }
     }
+    println!("Starting db stuff");
     let url = Opts::from_url(format!("mysql://{}:{}@{}:3306/{}", db_user, db_pass, db_host, db_name).as_str()).unwrap();
     let pool = Pool::new(url).unwrap();
     let mut conn = pool.get_conn().unwrap();
@@ -159,6 +163,8 @@ async fn main() {
         )"
     ).unwrap();
 
+
+    println!("Starting data transfer");
     conn.exec_batch(
         r"INSERT INTO energyprices (data_item, resource_name, interval_num, interval_start, interval_end, price)
         VALUES (:data_item, :resource_name, :interval_num, :interval_start, :interval_end, :price)",
